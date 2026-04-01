@@ -4,9 +4,9 @@ from unittest.mock import patch
 import pytest
 import requests
 
-from text2ioc import (_find_invalid_occurrences, _is_unlikely_linux_path,
-                      extract_iocs, get_tld_set_from_public_suffix_list,
-                      post_filter_false_positives)
+from text2ioc.ioc import (_find_invalid_occurrences, _is_unlikely_linux_path,
+                          extract_iocs, get_tld_set_from_public_suffix_list,
+                          post_filter_false_positives)
 
 
 def get_iocs(text, key):
@@ -45,7 +45,7 @@ def test_get_tld_set_custom_path(monkeypatch, tmp_path: Path, fake_suffix_list):
         def text(self):
             return fake_suffix_list
 
-    with patch("text2ioc.core.ioc.requests.get", return_value=FakeResponse()):
+    with patch("text2ioc.ioc.requests.get", return_value=FakeResponse()):
         tlds = get_tld_set_from_public_suffix_list()
 
     assert isinstance(tlds, set)
@@ -55,7 +55,7 @@ def test_get_tld_set_custom_path(monkeypatch, tmp_path: Path, fake_suffix_list):
     assert "www" not in tlds
     assert cache_file.exists()
 
-    with patch("text2ioc.core.ioc.requests.get") as mock_get:
+    with patch("text2ioc.ioc.requests.get") as mock_get:
         tlds2 = get_tld_set_from_public_suffix_list()
         mock_get.assert_not_called()
         assert tlds == tlds2
@@ -68,7 +68,7 @@ def test_get_tld_set_falls_back_to_default_tlds_on_request_error(
     monkeypatch.setenv("IOC_TLD_CACHE", str(cache_file))
 
     with patch(
-        "text2ioc.core.ioc.requests.get",
+        "text2ioc.ioc.requests.get",
         side_effect=requests.RequestException("network error"),
     ):
         tlds = get_tld_set_from_public_suffix_list()
@@ -85,7 +85,7 @@ def test_get_tld_set_falls_back_to_default_tlds_on_parse_error(
     cache_file.write_text(fake_suffix_list, encoding="utf-8")
     monkeypatch.setenv("IOC_TLD_CACHE", str(cache_file))
 
-    with patch("text2ioc.core.ioc.load_valid_tlds", side_effect=OSError("bad cache")):
+    with patch("text2ioc.ioc.load_valid_tlds", side_effect=OSError("bad cache")):
         tlds = get_tld_set_from_public_suffix_list()
 
     assert "gov" in tlds
@@ -422,6 +422,18 @@ def test_extract_urls_invalid(text):
             "ciagovlgmxiyo7qapr6km536svznpsygmqdeen5hpg5xce7b4zav54ad.onion",
             {"ciagovlgmxiyo7qapr6km536svznpsygmqdeen5hpg5xce7b4zav54ad.onion"},
         ),
+        ("Additional guidance is available at cisa.gov/ics.", {"cisa.gov"}),
+        ('The Reserve Bank of India launched the "bank.in" domain.', {"bank.in"}),
+        ("Malware uses webhook[.]site for callbacks.", {"webhook[.]site"}),
+        ("The staged archive was hosted on catbox.moe.", {"catbox.moe"}),
+        (
+            "Indicators included rusvolcorps[.]com and "
+            "ciagovlgmxiyo7qapr6km536svznpsygmqdeen5hpg5xce7b4zav54ad.onion.",
+            {
+                "rusvolcorps[.]com",
+                "ciagovlgmxiyo7qapr6km536svznpsygmqdeen5hpg5xce7b4zav54ad.onion",
+            },
+        ),
     ],
 )
 def test_extract_domains_valid(text, expected):
@@ -473,6 +485,12 @@ def test_extract_domains_valid(text, expected):
         "android.permission.POST_NOTIFICATIONS",
         "freemme.permission.msa.SECURITY_ACCESS",
         "README.md",
+        "PackageIndex.download",
+        "EndpointRequest.to()",
+        "ORG | Aliyun Computing Co.LTD",
+        '/wp:paragraph wp:image {"id":85659,"sizeSlug":"full","linkDestination":"none"} '
+        "Figure 3 - FizzBuzz.js /wp:image wp:paragraph catbox.moe",
+        "kg-card-begin: html × Unlock intelligence powered by DarkWebInformer.com",
     ],
 )
 def test_extract_domains_invalid(text):

@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2"]
 build-backend = "maturin"
 
 [project]
-name = "text2ioc"
+name = "test2ioc"
 version = "0.1.0"
 description = "Extract Indicators of Compromise (IOCs) from unstructured text."
 readme = "README.md"

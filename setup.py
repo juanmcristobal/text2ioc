@@ -35,7 +35,7 @@ setup(
     long_description=readme + '\n\n' + history,
     include_package_data=True,
     keywords='text2ioc',
-    name='text2ioc',
+    name='test2ioc',
     packages=find_packages(include=['text2ioc', 'text2ioc.*']),
     setup_requires=setup_requirements,
     test_suite='tests',

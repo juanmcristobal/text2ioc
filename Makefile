@@ -36,7 +36,7 @@ clean-build: ## remove build artifacts
 	rm -fr .eggs/
 	rm -fr target/
 	find . -name '*.egg-info' -exec rm -fr {} +
-	find . -name '*.egg' -exec rm -f {} +
+	find . -name '*.egg' -exec rm -fr {} +
 
 clean-pyc: ## remove Python file artifacts
 	find . -name '*.pyc' -exec rm -f {} +
@@ -74,6 +74,7 @@ release: dist ## package and upload a release
 	twine upload dist/*
 
 dist: clean ## builds source and wheel package
+	$(PYTHON) -m pip install --upgrade build
 	$(PYTHON) -m build .
 	ls -l dist
 

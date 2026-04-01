@@ -190,8 +190,38 @@ static IPV4_VERSION_CONTEXT_RE: Lazy<Regex> = Lazy::new(|| {
     )
     .unwrap()
 });
-static IPV4_ADVISORY_WORD_RE: Lazy<Regex> = Lazy::new(|| {
+static ADVISORY_CONTEXT_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)\b(?:vulnerability|vulnerable|issue|flaw|advisory|classified|detected|discovered|found)\b").unwrap()
+});
+static DOMAIN_MARKUP_CONTEXT_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?ix)
+        \b(?:wp:(?:paragraph|image|heading|list(?:-item)?)|kg-card-[\w-]+|linkdestination|sizeslug)\b
+        |
+        /wp:(?:paragraph|image|heading|list(?:-item)?)
+        |
+        html \s* [x×]
+        |
+        "\s*(?:id|sizeslug|linkdestination)"\s*:
+        "#,
+    )
+    .unwrap()
+});
+static DOMAIN_CODE_CONTEXT_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?ix)\b(?:package|module|namespace|class|function|method|component|plugin|manifest|permission|library|sdk|import|extension)\b",
+    )
+    .unwrap()
+});
+static DOMAIN_ORG_CONTEXT_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?ix)\borg\s*\||\b(?:vendor|organization|company|manufacturer|product)\b")
+        .unwrap()
+});
+static DOMAIN_PRESERVE_CONTEXT_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?ix)\b(?:domains?|sites?|websites?|hosts?|urls?|c2|callbacks?|resolves?|connects?\s+to|hosted\s+on)\b",
+    )
+    .unwrap()
 });
 static MITRE_TECHNIQUE_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\bT\d{4}(?:\.\d{3})?\b").unwrap());
@@ -572,7 +602,7 @@ fn has_version_word_near(start: usize, version_word_ends: &[usize]) -> bool {
         .is_some_and(|end| *end <= upper)
 }
 
-fn normalize_ipv4_context(text: &str) -> String {
+fn normalize_context(text: &str) -> String {
     let lowered = text.to_ascii_lowercase();
     let normalized = canonicalize_dot_separators(&lowered);
     let mut compact = String::with_capacity(normalized.len());
@@ -610,7 +640,7 @@ fn has_ipv4_parenthetical_suffix(text: &str, start: usize, value: &str) -> bool 
     IPV4_PAREN_SUFFIX_RE.is_match(&text[end..])
 }
 
-fn is_ipv4_context_break(ch: char) -> bool {
+fn is_context_break(ch: char) -> bool {
     matches!(ch, '\n' | '\r' | '!' | '?' | ';')
 }
 
@@ -628,7 +658,7 @@ fn next_char_boundary(text: &str, mut index: usize) -> usize {
     index
 }
 
-fn ipv4_context_window<'a>(text: &'a str, start: usize, value: &str) -> &'a str {
+fn context_window<'a>(text: &'a str, start: usize, value: &str) -> &'a str {
     const WINDOW: usize = 160;
 
     if text.is_empty() || start == MISSING_START {
@@ -641,7 +671,7 @@ fn ipv4_context_window<'a>(text: &'a str, start: usize, value: &str) -> &'a str 
 
     let mut left = lower;
     for (idx, ch) in text[lower..start].char_indices().rev() {
-        if is_ipv4_context_break(ch) {
+        if is_context_break(ch) {
             left = lower + idx + ch.len_utf8();
             break;
         }
@@ -649,13 +679,138 @@ fn ipv4_context_window<'a>(text: &'a str, start: usize, value: &str) -> &'a str 
 
     let mut right = upper;
     for (idx, ch) in text[end..upper].char_indices() {
-        if is_ipv4_context_break(ch) {
+        if is_context_break(ch) {
             right = end + idx;
             break;
         }
     }
 
     text[left..right].trim()
+}
+
+fn has_domain_path_suffix(text: &str, start: usize, value: &str) -> bool {
+    if text.is_empty() || start == MISSING_START {
+        return false;
+    }
+
+    let end = start.saturating_add(value.len()).min(text.len());
+    let suffix = text[end..].trim_start();
+    suffix.starts_with('/') || suffix.starts_with(':')
+}
+
+fn has_domain_symbol_suffix(text: &str, start: usize, value: &str) -> bool {
+    if text.is_empty() || start == MISSING_START {
+        return false;
+    }
+
+    let end = start.saturating_add(value.len()).min(text.len());
+    let suffix = text[end..].trim_start();
+    suffix.starts_with('(') || suffix.starts_with("::")
+}
+
+fn has_code_style_domain_casing(value: &str) -> bool {
+    let stripped = value.trim_start_matches("*.");
+
+    stripped.split('.').any(|label| {
+        let mut chars = label.chars();
+        let Some(first) = chars.next() else {
+            return false;
+        };
+
+        if !first.is_ascii_alphabetic() {
+            return false;
+        }
+
+        let mut saw_upper = first.is_ascii_uppercase();
+        let mut saw_noninitial_upper = false;
+        let mut saw_lower = first.is_ascii_lowercase();
+
+        for ch in chars {
+            if ch.is_ascii_uppercase() {
+                saw_upper = true;
+                saw_noninitial_upper = true;
+            }
+            if ch.is_ascii_lowercase() {
+                saw_lower = true;
+            }
+        }
+
+        saw_noninitial_upper || (saw_upper && !saw_lower && label.len() > 1)
+    })
+}
+
+fn is_probable_legal_entity_domain(value: &str) -> bool {
+    let lowered = value.to_ascii_lowercase();
+    let normalized = canonicalize_dot_separators(&lowered);
+    let labels: Vec<&str> = normalized.trim_start_matches("*.").split('.').collect();
+
+    !labels.is_empty()
+        && labels.len() <= 2
+        && value.chars().any(|ch| ch.is_ascii_uppercase())
+        && labels.iter().all(|label| {
+            !label.is_empty() && label.len() <= 4 && label.chars().all(|ch| ch.is_ascii_alphabetic())
+        })
+}
+
+fn has_explicit_domain_web_context(value: &str, start: usize, text: &str) -> bool {
+    let lowered = value.to_ascii_lowercase();
+    let normalized_item = canonicalize_dot_separators(&lowered);
+
+    if contains_defanged_dot(&lowered)
+        || lowered.starts_with("*.")
+        || normalized_item.ends_with(".onion")
+        || has_domain_path_suffix(text, start, value)
+    {
+        return true;
+    }
+
+    if text.is_empty() || start == MISSING_START {
+        return false;
+    }
+
+    let raw_context = context_window(text, start, value);
+    if raw_context.is_empty() {
+        return false;
+    }
+
+    let normalized_context = normalize_context(raw_context);
+    DOMAIN_PRESERVE_CONTEXT_RE.is_match(&normalized_context)
+}
+
+fn is_probable_false_domain(value: &str, start: usize, text: &str) -> bool {
+    if has_explicit_domain_web_context(value, start, text) {
+        return false;
+    }
+
+    if has_domain_symbol_suffix(text, start, value) {
+        return true;
+    }
+
+    if text.is_empty() || start == MISSING_START {
+        return has_code_style_domain_casing(value);
+    }
+
+    let raw_context = context_window(text, start, value);
+    if raw_context.is_empty() {
+        return has_code_style_domain_casing(value);
+    }
+
+    let normalized_context = normalize_context(raw_context);
+    if normalized_context.is_empty() {
+        return has_code_style_domain_casing(value);
+    }
+
+    let has_code_style = has_code_style_domain_casing(value);
+    let has_markup_context = DOMAIN_MARKUP_CONTEXT_RE.is_match(raw_context);
+    let has_code_context = DOMAIN_CODE_CONTEXT_RE.is_match(&normalized_context);
+    let has_org_context = DOMAIN_ORG_CONTEXT_RE.is_match(&normalized_context);
+    let has_advisory_context = ADVISORY_CONTEXT_RE.is_match(&normalized_context);
+
+    has_markup_context
+        || has_code_context
+        || (is_probable_legal_entity_domain(value) && (has_org_context || has_advisory_context))
+        || (has_code_style && raw_context == value)
+        || (has_code_style && (has_org_context || has_advisory_context))
 }
 
 fn has_ipv4_range_pattern(context: &str, item: &str) -> bool {
@@ -739,12 +894,12 @@ fn is_probable_ipv4_version(value: &str, start: usize, text: &str) -> bool {
         return false;
     }
 
-    let raw_context = ipv4_context_window(text, start, value);
+    let raw_context = context_window(text, start, value);
     if raw_context.is_empty() {
         return false;
     }
 
-    let normalized_context = normalize_ipv4_context(raw_context);
+    let normalized_context = normalize_context(raw_context);
     if normalized_context.is_empty() {
         return false;
     }
@@ -752,13 +907,13 @@ fn is_probable_ipv4_version(value: &str, start: usize, text: &str) -> bool {
     let lowered = value.to_ascii_lowercase();
     let normalized_item = canonicalize_dot_separators(&lowered).into_owned();
     let has_context_keyword =
-        IPV4_VERSION_CONTEXT_RE.is_match(&normalized_context) || IPV4_ADVISORY_WORD_RE.is_match(&normalized_context);
+        IPV4_VERSION_CONTEXT_RE.is_match(&normalized_context) || ADVISORY_CONTEXT_RE.is_match(&normalized_context);
     let has_nearby_three_part = has_nearby_three_part_version_token(&normalized_context, &normalized_item);
     let has_range_pattern = has_ipv4_range_pattern(&normalized_context, &normalized_item);
     let has_direct_version_label = has_direct_ipv4_version_label(&normalized_context, &normalized_item);
     let has_version_enumeration = has_nearby_three_part && has_version_list_separator(&normalized_context);
     let has_product_prefix =
-        IPV4_ADVISORY_WORD_RE.is_match(&normalized_context) && has_product_like_prefix(&normalized_context, &normalized_item);
+        ADVISORY_CONTEXT_RE.is_match(&normalized_context) && has_product_like_prefix(&normalized_context, &normalized_item);
 
     has_context_keyword
         && (has_nearby_three_part
@@ -900,6 +1055,9 @@ fn post_filter_false_positives_records_impl(
                 if !valid_tlds.contains(tld) || FORCE_FILE_EXT.contains(tld) {
                     continue;
                 }
+            }
+            if is_probable_false_domain(&record.value, record.start, text) {
+                continue;
             }
         }
 
