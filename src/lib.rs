@@ -23,8 +23,8 @@ const IOC_KEYS: [&str; 18] = [
     "sha256",
     "cve",
     "expressions",
-    "mitre_attack_t",
-    "mitre_tactic",
+    "attack_technique_id",
+    "attack_tactic_id",
     "registry_key",
     "cwe",
     "ghsa",
@@ -136,10 +136,10 @@ static SHA1_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[a-fA-F0-9]{40}\b").un
 static SHA256_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[a-fA-F0-9]{64}\b").unwrap());
 static CVE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)\bCVE-\d{4}-\d{4,7}\b").unwrap());
 static EXPRESSIONS_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\$\{[^}]+\}").unwrap());
-static MITRE_ATTACK_T_CAPTURE_RE: Lazy<Regex> = Lazy::new(|| {
+static ATTACK_TECHNIQUE_ID_CAPTURE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(?:^|[^A-Za-z0-9_-])(T\d{4}(?:\.\d{3})?)(?:$|[^A-Za-z0-9_-])").unwrap()
 });
-static MITRE_TACTIC_CAPTURE_RE: Lazy<Regex> = Lazy::new(|| {
+static ATTACK_TACTIC_ID_CAPTURE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(?:^|[^A-Za-z0-9_-])(TA\d{4})(?:$|[^A-Za-z0-9_-])").unwrap()
 });
 static REGISTRY_KEY_CAPTURE_RE: Lazy<Regex> = Lazy::new(|| {
@@ -268,8 +268,8 @@ struct IocBuckets {
     sha256: Vec<MatchRecord>,
     cve: Vec<MatchRecord>,
     expressions: Vec<MatchRecord>,
-    mitre_attack_t: Vec<MatchRecord>,
-    mitre_tactic: Vec<MatchRecord>,
+    attack_technique_id: Vec<MatchRecord>,
+    attack_tactic_id: Vec<MatchRecord>,
     registry_key: Vec<MatchRecord>,
     cwe: Vec<MatchRecord>,
     ghsa: Vec<MatchRecord>,
@@ -291,8 +291,8 @@ impl IocBuckets {
             &self.sha256,
             &self.cve,
             &self.expressions,
-            &self.mitre_attack_t,
-            &self.mitre_tactic,
+            &self.attack_technique_id,
+            &self.attack_tactic_id,
             &self.registry_key,
             &self.cwe,
             &self.ghsa,
@@ -1226,7 +1226,7 @@ fn post_filter_false_positives_impl(
 ) -> Vec<String> {
     if matches!(
         kind,
-        "mitre_attack_t" | "mitre_tactic" | "registry_key" | "cwe" | "ghsa" | "capec"
+        "attack_technique_id" | "attack_tactic_id" | "registry_key" | "cwe" | "ghsa" | "capec"
     ) {
         return entries;
     }
@@ -1265,8 +1265,8 @@ fn extract_iocs_impl(text: &str, valid_tlds: &HashSet<String>) -> IocBuckets {
         sha256: extract_direct(&SHA256_RE, text),
         cve: extract_direct(&CVE_RE, text),
         expressions: extract_direct(&EXPRESSIONS_RE, text),
-        mitre_attack_t: extract_capture_group(&MITRE_ATTACK_T_CAPTURE_RE, text, 1),
-        mitre_tactic: extract_capture_group(&MITRE_TACTIC_CAPTURE_RE, text, 1),
+        attack_technique_id: extract_capture_group(&ATTACK_TECHNIQUE_ID_CAPTURE_RE, text, 1),
+        attack_tactic_id: extract_capture_group(&ATTACK_TACTIC_ID_CAPTURE_RE, text, 1),
         registry_key: extract_registry_matches(text),
         cwe: extract_direct(&CWE_RE, text),
         ghsa: extract_direct(&GHSA_RE, text),

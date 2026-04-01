@@ -694,12 +694,12 @@ def test_extract_ipv6_invalid(text):
         ),
         (
             "Execution (TA0001) used Spearphishing Attachment (T1566.001) and User Execution (T1204).",
-            "mitre_attack_t",
+            "attack_technique_id",
             {"T1566.001", "T1204"},
         ),
         (
             "Execution (TA0001) used Spearphishing Attachment (T1566.001) and User Execution (T1204).",
-            "mitre_tactic",
+            "attack_tactic_id",
             {"TA0001"},
         ),
         (
@@ -778,8 +778,8 @@ def test_extract_files_discards_leading_punctuation_but_keeps_real_filename_ment
         ),
     ],
 )
-def test_extract_mitre_attack_t_valid(text, expected):
-    matches = get_iocs(text, "mitre_attack_t")
+def test_extract_attack_technique_id_valid(text, expected):
+    matches = get_iocs(text, "attack_technique_id")
     assert expected.issubset(matches)
 
 
@@ -795,8 +795,8 @@ def test_extract_mitre_attack_t_valid(text, expected):
         "T1059.001suffix",
     ],
 )
-def test_extract_mitre_attack_t_invalid(text):
-    matches = get_iocs(text, "mitre_attack_t")
+def test_extract_attack_technique_id_invalid(text):
+    matches = get_iocs(text, "attack_technique_id")
     assert text not in matches
 
 
@@ -807,8 +807,8 @@ def test_extract_mitre_attack_t_invalid(text):
         ("Execution (TA0002) preceded Exfiltration (TA0010).", {"TA0002", "TA0010"}),
     ],
 )
-def test_extract_mitre_tactic_valid(text, expected):
-    matches = get_iocs(text, "mitre_tactic")
+def test_extract_attack_tactic_id_valid(text, expected):
+    matches = get_iocs(text, "attack_tactic_id")
     assert expected.issubset(matches)
 
 
@@ -825,8 +825,8 @@ def test_extract_mitre_tactic_valid(text, expected):
         "TA0001_Windows",
     ],
 )
-def test_extract_mitre_tactic_invalid(text):
-    matches = get_iocs(text, "mitre_tactic")
+def test_extract_attack_tactic_id_invalid(text):
+    matches = get_iocs(text, "attack_tactic_id")
     assert text not in matches
 
 
@@ -1150,18 +1150,18 @@ def test_extract_reference_iocs_survive_url_deduplication():
     assert "CWE-295" in iocs["cwe"]
 
 
-def test_extract_mitre_attack_t_does_not_synthesize_from_url_paths():
+def test_extract_attack_technique_id_does_not_synthesize_from_url_paths():
     text = "Technique link: https://attack.mitre.org/techniques/T1059/001/."
     iocs = extract_iocs(text)
     assert "https://attack.mitre.org/techniques/T1059/001/" in iocs["url"]
-    assert "T1059.001" not in iocs["mitre_attack_t"]
+    assert "T1059.001" not in iocs["attack_technique_id"]
 
 
-def test_extract_mitre_tactic_survives_url_deduplication():
+def test_extract_attack_tactic_id_survives_url_deduplication():
     text = "Tactic link: https://attack.mitre.org/tactics/TA0001/."
     iocs = extract_iocs(text)
     assert "https://attack.mitre.org/tactics/TA0001/" in iocs["url"]
-    assert "TA0001" in iocs["mitre_tactic"]
+    assert "TA0001" in iocs["attack_tactic_id"]
 
 
 @pytest.mark.parametrize(

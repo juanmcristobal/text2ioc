@@ -199,10 +199,10 @@ IOC_REGEX = {
     "sha256": re.compile(r"\b[a-fA-F0-9]{64}\b", re.IGNORECASE),
     "cve": re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.IGNORECASE),
     "expressions": re.compile(r"\$\{[^}]+\}", re.IGNORECASE),
-    "mitre_attack_t": re.compile(
+    "attack_technique_id": re.compile(
         r"(?i)(?:^|[^A-Za-z0-9_-])(T\d{4}(?:\.\d{3})?)(?:$|[^A-Za-z0-9_-])"
     ),
-    "mitre_tactic": re.compile(
+    "attack_tactic_id": re.compile(
         r"(?i)(?:^|[^A-Za-z0-9_-])(TA\d{4})(?:$|[^A-Za-z0-9_-])"
     ),
     "registry_key": re.compile(
@@ -300,8 +300,8 @@ def post_filter_false_positives(
         "file",
         "filepath",
         "ipv4",
-        "mitre_attack_t",
-        "mitre_tactic",
+        "attack_technique_id",
+        "attack_tactic_id",
         "registry_key",
         "cwe",
         "ghsa",
