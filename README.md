@@ -5,7 +5,7 @@
 Install from PyPI:
 
 ```bash
-pip install test2ioc
+pip install text2ioc
 ```
 
 ## Usage
@@ -85,7 +85,7 @@ tox
 - Tests run on Linux, macOS, and Windows.
 - Coverage is still checked in CI.
 - Wheels and sdist are built with `maturin-action`.
-- The distributed package name is `test2ioc` and the import package remains `text2ioc`.
+- The distributed package name is `text2ioc` and the import package remains `text2ioc`.
 
 ## Authors
 
