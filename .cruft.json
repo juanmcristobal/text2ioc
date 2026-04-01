@@ -1,0 +1,22 @@
+{
+  "template": "git@github.com:juanmcristobal/pypackage-basic.git",
+  "commit": "180228fdc908a9b8281686705da1e407cacb7407",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Juan Manuel Cristóbal Moreno",
+      "email": "juanmcristobal@gmail.com",
+      "github_username": "juanmcristobal",
+      "project_name": "text2ioc",
+      "project_slug": "text2ioc",
+      "project_short_description": "Python package for extracting Indicators of Compromise (IOCs) from unstructured text of any length, including articles, reports, logs, and threat intelligence documents.",
+      "version": "0.1.0",
+      "private_repo": "y",
+      "command_line_interface": "No command-line interface",
+      "__pypackage_version": "0.1.0",
+      "_template": "git@github.com:juanmcristobal/pypackage-basic.git",
+      "_commit": "180228fdc908a9b8281686705da1e407cacb7407"
+    }
+  },
+  "directory": null
+}
