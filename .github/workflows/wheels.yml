@@ -23,7 +23,7 @@ jobs:
           - name: linux-armv7
             os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
-            manylinux: "2_31"
+            manylinux: "2_17"
           - name: windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
