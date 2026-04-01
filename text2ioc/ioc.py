@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import tempfile
 from functools import lru_cache
 from importlib import import_module
 from pathlib import Path
@@ -255,15 +256,17 @@ def _load_sorted_valid_tlds_cached(cache_path: str, mtime_ns: int) -> tuple[str,
 
 
 def _get_sorted_valid_tlds() -> tuple[str, ...]:
-    cache_path = Path(os.getenv("IOC_TLD_CACHE", "/tmp/public_suffix_list.dat"))
+    default_cache = Path(tempfile.gettempdir()) / "public_suffix_list.dat"
+    cache_path = Path(os.getenv("IOC_TLD_CACHE", str(default_cache)))
     if not cache_path.exists():
         try:
             response = requests.get(
                 "https://publicsuffix.org/list/public_suffix_list.dat", timeout=10
             )
             response.raise_for_status()
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
             cache_path.write_text(response.text, encoding="utf-8")
-        except requests.RequestException:
+        except (OSError, requests.RequestException):
             return _DEFAULT_SORTED_TLDS
 
     try:

@@ -92,6 +92,27 @@ def test_get_tld_set_falls_back_to_default_tlds_on_parse_error(
     assert "net" in tlds
 
 
+def test_get_tld_set_creates_missing_cache_parent(
+    monkeypatch, tmp_path: Path, fake_suffix_list
+):
+    cache_file = tmp_path / "nested" / "cache" / "suffix_list.dat"
+    monkeypatch.setenv("IOC_TLD_CACHE", str(cache_file))
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        @property
+        def text(self):
+            return fake_suffix_list
+
+    with patch("text2ioc.ioc.requests.get", return_value=FakeResponse()):
+        tlds = get_tld_set_from_public_suffix_list()
+
+    assert "com" in tlds
+    assert cache_file.exists()
+
+
 @pytest.mark.parametrize(
     "text, expected",
     [
