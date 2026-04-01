@@ -6,7 +6,7 @@ from text2ioc.ioc import (_find_invalid_occurrences, _is_unlikely_linux_path,
 
 __author__ = "Juan Manuel Cristóbal Moreno"
 __email__ = "juanmcristobal@gmail.com"
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "_find_invalid_occurrences",
